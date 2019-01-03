@@ -95,7 +95,10 @@ class SummaryGraph(object):
 
     def __init__(self, model, dummy_input):
         with torch.onnx.set_training(model, False):
-            trace, _ = jit.get_trace_graph(model, dummy_input.cuda())
+            if torch.cuda.is_available():
+                trace, _ = jit.get_trace_graph(model, dummy_input.cuda())
+            else:
+                trace, _ = jit.get_trace_graph(model, dummy_input)
 
             # Let ONNX do the heavy lifting: fusing the convolution nodes; fusing the nodes
             # composing a GEMM operation; etc.
@@ -610,7 +613,10 @@ def export_img_classifier_to_onnx(model, onnx_fname, dataset, export_params=True
     """Export a PyTorch image classifier to ONNX.
 
     """
-    dummy_input = dataset_dummy_input(dataset).to('cuda')
+    if torch.cuda.is_available():
+        dummy_input = dataset_dummy_input(dataset).to('cuda')
+    else:
+        dummy_input = dataset_dummy_input(dataset)
     # Pytorch 0.4 doesn't support exporting modules wrapped in DataParallel
     model = distiller.make_non_parallel_copy(model)
 
