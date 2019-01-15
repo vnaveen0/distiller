@@ -273,14 +273,16 @@ def main():
         except ValueError:
             msglogger.error('ERROR: Argument --gpus must be a comma-separated list of integers only')
             exit(1)
-        available_gpus = torch.cuda.device_count()
-        for dev_id in args.gpus:
-            if dev_id >= available_gpus:
-                msglogger.error('ERROR: GPU device ID {0} requested, but only {1} devices available'
-                                .format(dev_id, available_gpus))
-                exit(1)
-        # Set default device in case the first one on the list != 0
-        torch.cuda.set_device(args.gpus[0])
+
+        if device == torch.device("cuda"):
+            available_gpus = torch.cuda.device_count()
+            for dev_id in args.gpus:
+                if dev_id >= available_gpus:
+                    msglogger.error('ERROR: GPU device ID {0} requested, but only {1} devices available'
+                                    .format(dev_id, available_gpus))
+                    exit(1)
+            # Set default device in case the first one on the list != 0
+            torch.cuda.set_device(args.gpus[0])
 
     # Infer the dataset from the model name
     args.dataset = 'cifar10' if 'cifar' in args.arch else 'imagenet'
@@ -311,7 +313,11 @@ def main():
             model, chkpt_file=args.resume)
 
     # Define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
+    if device == torch.device("cuda"):
+        criterion = nn.CrossEntropyLoss().cuda()
+    else:
+        criterion = nn.CrossEntropyLoss()
+
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
@@ -347,7 +353,11 @@ def main():
         # requires a compression schedule configuration file in YAML.
         compression_scheduler = distiller.file_config(model, optimizer, args.compress)
         # Model is re-transferred to GPU in case parameters were added (e.g. PACTQuantizer)
-        model.cuda()
+
+        if device == torch.device("cuda"):
+            model.cuda()
+        else:
+            model
     else:
         compression_scheduler = distiller.CompressionScheduler(model, device)
 
@@ -386,7 +396,7 @@ def main():
 
         # evaluate on validation set
         with collectors_context(activations_collectors["valid"]) as collectors:
-            top1, top5, vloss = validate(val_loader, model, criterion, [pylogger], args, epoch)
+            top1, top5, vloss = validate(val_loader, model, criterion, device, [pylogger], args, epoch)
             distiller.log_activation_statsitics(epoch, "valid", loggers=[tflogger],
                                                 collector=collectors["sparsity"])
             save_collectors_data(collectors, msglogger.logdir)
@@ -416,7 +426,7 @@ def main():
                                  best_epochs[0].top1, is_best, args.name, msglogger.logdir)
 
     # Finally run results on the test set
-    test(test_loader, model, criterion, [pylogger], activations_collectors, args=args)
+    test(test_loader, model,device, criterion, [pylogger], activations_collectors, args=args)
 
 
 OVERALL_LOSS_KEY = 'Overall Loss'
@@ -452,6 +462,7 @@ def train(train_loader, model, criterion, optimizer, epoch,
     for train_step, (inputs, target) in enumerate(train_loader):
         # Measure data loading time
         data_time.add(time.time() - end)
+
         if device == torch.device("cuda"):
             inputs, target = inputs.to('cuda'), target.to('cuda')
 
@@ -526,26 +537,26 @@ def train(train_loader, model, criterion, optimizer, epoch,
         end = time.time()
 
 
-def validate(val_loader, model, criterion, loggers, args, epoch=-1):
+def validate(val_loader, model, criterion, device, loggers, args, epoch=-1):
     """Model validation"""
     if epoch > -1:
         msglogger.info('--- validate (epoch=%d)-----------', epoch)
     else:
         msglogger.info('--- validate ---------------------')
-    return _validate(val_loader, model, criterion, loggers, args, epoch)
+    return _validate(val_loader, model, device, criterion, loggers, args, epoch)
 
 
-def test(test_loader, model, criterion, loggers, activations_collectors, args):
+def test(test_loader, model, device, criterion, loggers, activations_collectors, args):
     """Model Test"""
     msglogger.info('--- test ---------------------')
 
     with collectors_context(activations_collectors["test"]) as collectors:
-        top1, top5, lossses = _validate(test_loader, model, criterion, loggers, args)
+        top1, top5, lossses = _validate(test_loader, model, device, criterion, loggers, args)
         distiller.log_activation_statsitics(-1, "test", loggers, collector=collectors['sparsity'])
     return top1, top5, lossses
 
 
-def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
+def _validate(data_loader, model, device, criterion, loggers, args, epoch=-1):
     """Execute the validation/test loop."""
     losses = {'objective_loss': tnt.AverageValueMeter()}
     classerr = tnt.ClassErrorMeter(accuracy=True, topk=(1, 5))
@@ -573,7 +584,10 @@ def _validate(data_loader, model, criterion, loggers, args, epoch=-1):
     end = time.time()
     for validation_step, (inputs, target) in enumerate(data_loader):
         with torch.no_grad():
-            inputs, target = inputs.to('cuda'), target.to('cuda')
+            if device == torch.device("cuda"):
+                inputs, target = inputs.to('cuda'), target.to('cuda')
+            else:
+                inputs, target = inputs, target
             # compute output from model
             output = model(inputs)
 
@@ -648,7 +662,11 @@ def earlyexit_validate_loss(output, target, criterion, args):
     # but with a grouping of samples equal to the batch size.
     # Note that final group might not be a full batch - so determine actual size.
     this_batch_size = target.size()[0]
-    earlyexit_validate_criterion = nn.CrossEntropyLoss(reduction='none').cuda()
+
+    if device == torch.device("cuda"):
+        earlyexit_validate_criterion = nn.CrossEntropyLoss(reduction='none').cuda()
+    else:
+        earlyexit_validate_criterion = nn.CrossEntropyLoss(reduction='none')
     for exitnum in range(args.num_exits):
         # calculate losses at each sample separately in the minibatch.
         args.loss_exits[exitnum] = earlyexit_validate_criterion(output[exitnum], target)
@@ -715,7 +733,12 @@ def evaluate_model(model, criterion, test_loader, loggers, activations_collector
                                                           args.qe_bits_accum, args.qe_clip_acts,
                                                           args.qe_no_clip_layers)
         quantizer.prepare_model()
-        model.cuda()
+
+        if device == torch.device("cuda"):
+            model.cuda()
+        else:
+            model
+
 
     top1, _, _ = test(test_loader, model, criterion, loggers, activations_collectors, args=args)
 
