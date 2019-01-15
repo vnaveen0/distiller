@@ -231,6 +231,8 @@ def save_collectors_data(collectors, directory):
 
 
 def main():
+
+    device=torch.device("cpu")
     global msglogger
     check_pytorch_version()
     args = parser.parse_args()
@@ -347,7 +349,7 @@ def main():
         # Model is re-transferred to GPU in case parameters were added (e.g. PACTQuantizer)
         model.cuda()
     else:
-        compression_scheduler = distiller.CompressionScheduler(model, device=torch.device("cpu"))
+        compression_scheduler = distiller.CompressionScheduler(model, device)
 
     args.kd_policy = None
     if args.kd_teacher:
@@ -374,7 +376,7 @@ def main():
 
         # Train for one epoch
         with collectors_context(activations_collectors["train"]) as collectors:
-            train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
+            train(train_loader, model, criterion, optimizer, epoch, compression_scheduler, device,
                   loggers=[tflogger, pylogger], args=args)
             distiller.log_weights_sparsity(model, epoch, loggers=[tflogger, pylogger])
             distiller.log_activation_statsitics(epoch, "train", loggers=[tflogger],
@@ -422,7 +424,7 @@ OBJECTIVE_LOSS_KEY = 'Objective Loss'
 
 
 def train(train_loader, model, criterion, optimizer, epoch,
-          compression_scheduler, loggers, args):
+          compression_scheduler, device,loggers, args):
     """Training loop for one epoch."""
     losses = OrderedDict([(OVERALL_LOSS_KEY, tnt.AverageValueMeter()),
                           (OBJECTIVE_LOSS_KEY, tnt.AverageValueMeter())])
@@ -450,7 +452,8 @@ def train(train_loader, model, criterion, optimizer, epoch,
     for train_step, (inputs, target) in enumerate(train_loader):
         # Measure data loading time
         data_time.add(time.time() - end)
-        inputs, target = inputs.to('cuda'), target.to('cuda')
+        if device == torch.device("cuda"):
+            inputs, target = inputs.to('cuda'), target.to('cuda')
 
         # Execute the forward phase, compute the output and measure loss
         if compression_scheduler:
