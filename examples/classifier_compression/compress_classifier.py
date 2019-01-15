@@ -347,7 +347,7 @@ def main():
         # Model is re-transferred to GPU in case parameters were added (e.g. PACTQuantizer)
         model.cuda()
     else:
-        compression_scheduler = distiller.CompressionScheduler(model)
+        compression_scheduler = distiller.CompressionScheduler(model, device=torch.device("cpu"))
 
     args.kd_policy = None
     if args.kd_teacher:

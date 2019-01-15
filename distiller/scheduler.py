@@ -73,7 +73,7 @@ class CompressionScheduler(object):
     """Responsible for scheduling pruning and masking parameters.
 
     """
-    def __init__(self, model, device=torch.device("cuda")):
+    def __init__(self, model, device):
         self.model = model
         self.device = device
         self.policies = {}
