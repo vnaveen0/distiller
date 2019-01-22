@@ -87,8 +87,16 @@ def load_checkpoint(model, chkpt_file, optimizer=None):
         msglogger.info("=> loading checkpoint %s", chkpt_file)
         checkpoint = torch.load(chkpt_file)
         msglogger.info("Checkpoint keys:\n{}".format("\n\t".join(k for k in checkpoint.keys())))
-        start_epoch = checkpoint['epoch'] + 1
-        best_top1 = checkpoint.get('best_top1', None)
+        if 'epoch' in checkpoint:
+          start_epoch = checkpoint['epoch'] + 1
+        else:
+          start_epoch = 0
+
+        if 'best_top1' in checkpoint:
+          best_top1 = checkpoint.get('best_top1', None)
+        else:
+          best_top1 = None
+
         if best_top1 is not None:
             msglogger.info("   best top@1: %.3f", best_top1)
 
@@ -96,7 +104,7 @@ def load_checkpoint(model, chkpt_file, optimizer=None):
             compression_scheduler = distiller.CompressionScheduler(model)
             compression_scheduler.load_state_dict(checkpoint['compression_sched'])
             msglogger.info("Loaded compression schedule from checkpoint (epoch %d)",
-                           checkpoint['epoch'])
+                           start_epoch)
         else:
             msglogger.info("Warning: compression schedule data does not exist in the checkpoint")
 
@@ -116,9 +124,13 @@ def load_checkpoint(model, chkpt_file, optimizer=None):
             quantizer = qmd['type'](model, **qmd['params'])
             quantizer.prepare_model()
 
-        msglogger.info("=> loaded checkpoint '%s' (epoch %d)", chkpt_file, checkpoint['epoch'])
+        msglogger.info("=> loaded checkpoint '%s' (epoch %d)", chkpt_file,start_epoch )
 
-        model.load_state_dict(checkpoint['state_dict'])
+        if 'state_dict' in checkpoint:
+          model.load_state_dict(checkpoint['state_dict'])
+        else:
+          msglogger.info("no state_dict in checkpoint")
+
         return model, compression_scheduler, start_epoch
     else:
         raise IOError(ENOENT, 'Could not find a checkpoint file at', chkpt_file)
