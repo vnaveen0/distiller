@@ -1,0 +1,160 @@
+# 1. TRAINING COMMAND
+# time  python compress_classifier.py --arch simplenet_cifar ../../../data.cifar10 -p 30 -j=1 --lr=0.01                                          
+ 
+# Training epoch: 45000 samples (256 per mini-batch)
+# Epoch: [89][   30/  176]    Overall Loss 0.818538    Objective Loss 0.818538    Top1 71.054688    Top5 97.981771    LR 0.010000    Time 0.067992    
+# Epoch: [89][   60/  176]    Overall Loss 0.816748    Objective Loss 0.816748    Top1 71.204427    Top5 97.903646    LR 0.010000    Time 0.065290    
+# Epoch: [89][   90/  176]    Overall Loss 0.818254    Objective Loss 0.818254    Top1 71.145833    Top5 97.934028    LR 0.010000    Time 0.064434    
+# Epoch: [89][  120/  176]    Overall Loss 0.828223    Objective Loss 0.828223    Top1 70.914714    Top5 97.802734    LR 0.010000    Time 0.064079    
+# Epoch: [89][  150/  176]    Overall Loss 0.828928    Objective Loss 0.828928    Top1 70.835938    Top5 97.757812    LR 0.010000    Time 0.063719    
+# 
+# Parameters:
+# +----+---------------------+---------------+---------------+----------------+------------+------------+----------+----------+----------+------------+---------+----------+------------+
+# |    | Name                | Shape         |   NNZ (dense) |   NNZ (sparse) |   Cols (%) |   Rows (%) |   Ch (%) |   2D (%) |   3D (%) |   Fine (%) |     Std |     Mean |   Abs-Mean |
+# |----+---------------------+---------------+---------------+----------------+------------+------------+----------+----------+----------+------------+---------+----------+------------|
+# |  0 | module.conv1.weight | (6, 3, 5, 5)  |           450 |            450 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.39418 |  0.00213 |    0.26978 |
+# |  1 | module.conv2.weight | (16, 6, 5, 5) |          2400 |           2400 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.17437 | -0.00529 |    0.12595 |
+# |  2 | module.fc1.weight   | (120, 400)    |         48000 |          48000 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.06328 | -0.00213 |    0.04932 |
+# |  3 | module.fc2.weight   | (84, 120)     |         10080 |          10080 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.08652 | -0.00567 |    0.06954 |
+# |  4 | module.fc3.weight   | (10, 84)      |           840 |            840 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.15597 |  0.00205 |    0.12658 |
+# |  5 | Total sparsity:     | -             |         61770 |          61770 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.00000 |  0.00000 |    0.00000 |
+# +----+---------------------+---------------+---------------+----------------+------------+------------+----------+----------+----------+------------+---------+----------+------------+
+# Total sparsity: 0.00
+# 
+# --- validate (epoch=89)-----------
+# 5000 samples (256 per mini-batch)
+# ==> Top1: 68.320    Top5: 96.840    Loss: 0.911
+# 
+# ==> Best Top1: 69.340 on Epoch: 85
+# Saving checkpoint to: logs/2019.01.31-140143/checkpoint.pth.tar
+# --- test ---------------------
+# 10000 samples (256 per mini-batch)
+# Test: [   30/   39]    Loss 0.823358    Top1 71.276042    Top5 97.851562    
+# ==> Top1: 71.160    Top5: 97.860    Loss: 0.837
+# 
+# 
+# Log file for this run: /localhome/nvedula/distiller/examples/classifier_compression/logs/2019.01.31-140143/2019.01.31-140143.log
+# 
+# real    305m3.446s
+# user    20m30.959s
+# sys     1m6.206s
+
+
+
+# 2. SPARSITY COMMAND -- USES ELEMENTWISE PRUNING
+#(env_distiller) [nvedula@aenao-129 classifier_compression]$ time python3 compress_classifier.py -a=simplenet_cifar --lr=0.005 -p=50 ../../../data.cifar10 -j=22  --epochs 1 --resume=/localhome/nvedula/.to
+#rch/models/simplenet_trained/simplenet.pth.tar --compress=../../custom/agp-pruning/simplenet_agp.yaml
+#Log file for this run: /localhome/nvedula/distiller/examples/classifier_compression/logs/2019.02.01-111538/2019.02.01-111538.log
+#==> using cifar10 dataset
+#=> creating simplenet_cifar model for CIFAR10
+#
+#--------------------------------------------------------
+#Logging to TensorBoard - remember to execute the server:
+#> tensorboard --logdir='./logs'
+#
+#=> loading checkpoint /localhome/nvedula/.torch/models/simplenet_trained/simplenet.pth.tar
+#Checkpoint keys:
+#epoch
+#        arch
+#        state_dict
+#        best_top1
+#        optimizer
+#        compression_sched
+#   best top@1: 69.340
+#Loaded compression schedule from checkpoint (epoch 90)
+#=> loaded checkpoint '/localhome/nvedula/.torch/models/simplenet_trained/simplenet.pth.tar' (epoch 90)
+#Optimizer Type: <class 'torch.optim.sgd.SGD'>
+#Optimizer Args: {'lr': 0.005, 'momentum': 0.9, 'dampening': 0, 'weight_decay': 0.0001, 'nesterov': False}
+#Files already downloaded and verified
+#Files already downloaded and verified
+#Dataset sizes:
+#        training=45000
+#        validation=5000
+#        test=10000
+#Reading compression schedule from: ../../custom/agp-pruning/simplenet_agp.yaml
+#
+#
+#Training epoch: 45000 samples (256 per mini-batch)
+#Epoch: [90][   50/  176]    Overall Loss 0.803612    Objective Loss 0.803612    Top1 71.632812    Top5 98.078125    LR 0.005000    Time 0.036584    
+#Epoch: [90][  100/  176]    Overall Loss 0.808880    Objective Loss 0.808880    Top1 71.378906    Top5 98.000000    LR 0.005000    Time 0.025202    
+#Epoch: [90][  150/  176]    Overall Loss 0.808430    Objective Loss 0.808430    Top1 71.486979    Top5 97.992188    LR 0.005000    Time 0.020464    
+#
+#Parameters:
+#+----+---------------------+---------------+---------------+----------------+------------+------------+----------+----------+----------+------------+---------+----------+------------+
+#|    | Name                | Shape         |   NNZ (dense) |   NNZ (sparse) |   Cols (%) |   Rows (%) |   Ch (%) |   2D (%) |   3D (%) |   Fine (%) |     Std |     Mean |   Abs-Mean |
+#|----+---------------------+---------------+---------------+----------------+------------+------------+----------+----------+----------+------------+---------+----------+------------|
+#|  0 | module.conv1.weight | (6, 3, 5, 5)  |           450 |            450 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.39461 |  0.00186 |    0.27067 |
+#|  1 | module.conv2.weight | (16, 6, 5, 5) |          2400 |           2400 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.17451 | -0.00466 |    0.12604 |
+#|  2 | module.fc1.weight   | (120, 400)    |         48000 |          48000 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.06332 | -0.00202 |    0.04934 |
+#|  3 | module.fc2.weight   | (84, 120)     |         10080 |          10080 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.00000 | 0.08660 | -0.00528 |    0.06959 |
+#|  4 | module.fc3.weight   | (10, 84)      |           840 |            798 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    5.00000 | 0.15617 |  0.00202 |    0.12650 |
+#|  5 | Total sparsity:     | -             |         61770 |          61728 |    0.00000 |    0.00000 |  0.00000 |  0.00000 |  0.00000 |    0.06799 | 0.00000 |  0.00000 |    0.00000 |
+#+----+---------------------+---------------+---------------+----------------+------------+------------+----------+----------+----------+------------+---------+----------+------------+
+#Total sparsity: 0.07
+#
+#--- validate (epoch=90)-----------
+#5000 samples (256 per mini-batch)
+#==> Top1: 73.140    Top5: 97.800    Loss: 0.776
+#
+#==> Best Top1: 73.140 on Epoch: 90
+#Saving checkpoint to: logs/2019.02.01-111538/checkpoint.pth.tar
+#--- test ---------------------
+#10000 samples (256 per mini-batch)
+#==> Top1: 71.810    Top5: 98.050    Loss: 0.803
+#
+#
+#Log file for this run: /localhome/nvedula/distiller/examples/classifier_compression/logs/2019.02.01-111538/2019.02.01-111538.log
+#
+#real    0m15.473s
+#user    0m31.735s
+#sys     0m6.978s
+
+
+
+
+version: 1
+pruners:
+  fc3_pruner:
+    class: 'AutomatedGradualPruner'
+    initial_sparsity : 0.05
+    final_sparsity: 0.91
+    weights:  ['module.fc3.weight']
+
+
+  #   class: 'AutomatedGradualPruner'
+  #   initial_sparsity : 0.03
+  #   final_sparsity: 0.16
+
+  conv2_pruner:
+    class: 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.62
+    weights: ['module.conv2.weight']
+
+
+
+lr_schedulers:
+  # Learning rate decay scheduler
+   pruning_lr:
+     class: ExponentialLR
+     gamma: 0.9
+
+
+policies:
+  - pruner:
+      instance_name : 'conv2_pruner'
+    starting_epoch: 91
+    ending_epoch: 111
+    frequency: 2
+
+  - pruner:
+      instance_name : 'fc3_pruner'
+    starting_epoch: 90
+    ending_epoch: 108
+    frequency: 2
+
+  - lr_scheduler:
+      instance_name: pruning_lr
+    starting_epoch: 124
+    ending_epoch: 140
+    frequency: 1
