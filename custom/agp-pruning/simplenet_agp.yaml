@@ -42,8 +42,7 @@
 
 
 # 2. SPARSITY COMMAND -- USES ELEMENTWISE PRUNING
-#(env_distiller) [nvedula@aenao-129 classifier_compression]$ time python3 compress_classifier.py -a=simplenet_cifar --lr=0.005 -p=50 ../../../data.cifar10 -j=22  --epochs 1 --resume=/localhome/nvedula/.to
-#rch/models/simplenet_trained/simplenet.pth.tar --compress=../../custom/agp-pruning/simplenet_agp.yaml
+#(env_distiller) [nvedula@aenao-129 classifier_compression]$ time python3 compress_classifier.py -a=simplenet_cifar --lr=0.005 -p=50 ../../../data.cifar10 -j=22  --epochs 1 --resume=/localhome/nvedula/.torch/models/simplenet_trained/simplenet.pth.tar --compress=../../custom/agp-pruning/simplenet_agp.yaml
 #Log file for this run: /localhome/nvedula/distiller/examples/classifier_compression/logs/2019.02.01-111538/2019.02.01-111538.log
 #==> using cifar10 dataset
 #=> creating simplenet_cifar model for CIFAR10

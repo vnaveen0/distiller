@@ -45,6 +45,7 @@ class ParameterMasker(object):
         msglogger.debug('Masking parameter {0}'.format(self.param_name))
         if self.use_double_copies:
             self.unmasked_copy = tensor.clone()
+
         tensor.data.mul_(self.mask)
         if self.is_regularization_mask:
             self.mask = None

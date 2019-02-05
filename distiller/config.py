@@ -53,7 +53,6 @@ def dict_config(model, optimizer, sched_dict):
     app_cfg_logger.debug('Schedule contents:\n' + json.dumps(sched_dict, indent=2))
 
     schedule = distiller.CompressionScheduler(model)
-
     pruners = __factory('pruners', model, sched_dict)
     regularizers = __factory('regularizers', model, sched_dict)
     quantizers = __factory('quantizers', model, sched_dict, optimizer=optimizer)

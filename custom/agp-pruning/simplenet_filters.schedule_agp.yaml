@@ -1,0 +1,86 @@
+# This is a hybrid pruning schedule composed of several pruning techniques, all using AGP scheduling:
+# 1. Filter pruning (and thinning) to reduce compute and activation sizes of some layers.
+# 2. Fine grained pruning to reduce the parameter memory requirements of layers with large weights tensors.
+# 3. Row pruning for the last linear (fully-connected) layer.
+
+#(env_distiller) [nvedula@aenao-129 classifier_compression]$ time python3 compress_classifier.py -a=simplenet_cifar --lr=0.005 -p=50 ../../../data.cifar10 -j=22  --epochs 1 --resume=/localhome/nvedula/.torch/models/simplenet_trained/simplenet.pth.tar --compress=../../custom/agp-pruning/simplenet_filters.schedule_agp.yaml 
+#
+
+
+version: 1
+
+pruners:
+  low_pruner:
+    class: L1RankedStructureParameterPruner_AGP
+    initial_sparsity : 0.10
+    final_sparsity: 0.50
+    reg_regims:
+      module.conv2.weight: Filters
+
+
+  fine_pruner:
+    class:  AutomatedGradualPruner
+    initial_sparsity : 0.05
+    final_sparsity: 0.70
+    weights: ['module.conv1.weight']
+            
+
+  fc_pruner:
+    class: L1RankedStructureParameterPruner_AGP
+    initial_sparsity : 0.05
+    final_sparsity: 0.50
+    reg_regims:
+      module.fc.weight: Rows
+
+lr_schedulers:
+  pruning_lr:
+    class: StepLR
+    step_size: 50
+    gamma: 0.10
+
+extensions:
+  net_thinner:
+      class: 'FilterRemover'
+      thinning_func_str: remove_filters
+      arch: 'simplenet_cifar'
+      dataset: 'cifar10'
+
+
+policies:
+  - pruner:
+      instance_name : low_pruner
+    starting_epoch: 91
+    ending_epoch: 94
+    frequency: 2
+
+  - pruner:
+      instance_name : fine_pruner
+    starting_epoch: 95
+    ending_epoch: 97
+    frequency: 2
+
+  - pruner:
+      instance_name : fc_pruner
+    starting_epoch: 98
+    ending_epoch: 101
+    frequency: 2
+
+  # Currently the thinner is disabled until the the structure pruner is done, because it interacts
+  # with the sparsity goals of the L1RankedStructureParameterPruner_AGP.
+  # This can be fixed rather easily.
+  # - extension:
+  #     instance_name: net_thinner
+  #   starting_epoch: 0
+  #   ending_epoch: 20
+  #   frequency: 2
+
+# After completeing the pruning, we perform network thinning and continue fine-tuning.
+  - extension:
+      instance_name: net_thinner
+    epochs: [12]
+
+  - lr_scheduler:
+      instance_name: pruning_lr
+    starting_epoch: 91
+    ending_epoch: 102
+    frequency: 1
