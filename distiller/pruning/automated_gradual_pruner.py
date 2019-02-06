@@ -99,7 +99,7 @@ class L1RankedStructureParameterPruner_AGP(CriterionParameterizedAGP):
         self.filters_ranking_fn = L1RankedStructureParameterPruner.rank_prune_filters
         self.channels_ranking_fn = L1RankedStructureParameterPruner.rank_prune_channels
         self.rows_ranking_fn = L1RankedStructureParameterPruner.rank_prune_rows
-        self.blocks_ranking_fn = L1RankedStructureParameterPruner.dataflow_rank_prune_filters
+        self.blocks_ranking_fn = L1RankedStructureParameterPruner.dataflow_rank_prune_blocks
 
 
 class ActivationAPoZRankedFilterPruner_AGP(CriterionParameterizedAGP):

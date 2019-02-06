@@ -119,8 +119,7 @@ class L1RankedStructureParameterPruner(RankedStructureParameterPruner):
 
 
     @staticmethod
-    def dataflow_rank_prune_filters(weight_buffer_size, param, param_name, zeros_mask_dict, model=None):
-        import pdb; pdb.set_trace()
+    def dataflow_rank_prune_blocks(weight_buffer_size, param, param_name, zeros_mask_dict, model=None):
         assert param.dim() == 4, "This thresholding is only supported for 4D weights"
         # First we rank the filters
         view_filters = param.view(param.size(0), -1)
@@ -133,7 +132,31 @@ class L1RankedStructureParameterPruner(RankedStructureParameterPruner):
 
         # Note: fraction to prune is per batch
         if batch_size > mem_limit:
-          fraction_to_prune = mem_limit/batch_size
+          target_sparsity_per_block = batch_size - mem_limit
+          fraction_to_prune = target_sparsity_per_block/batch_size
+        else:
+          return
+
+        num_blocks = param.size(0)// KScnn
+        view_filters = param.view(num_blocks, -1)
+
+        bottomk, _ = torch.topk(param.abs().view(num_blocks,-1), int(target_sparsity_per_block), largest=False, sorted=True)
+        # This is the largest element from the group of elements that we prune away
+        threshold = bottomk.data[:,-1]
+        mask = torch.zeros_like(view_filters)
+        mask[0,:].fill_(threshold[0])
+        mask[1,:].fill_(threshold[1])
+        mask[2,:].fill_(threshold[2])
+        mask[3,:].fill_(threshold[3])
+
+        zeromask = distiller.threshold_mask(view_filters,mask)
+        zeros_mask_dict[param_name].mask= zeromask.view(param.size(0),param.size(1),param.size(2),param.size(3))
+
+        msglogger.info(" PER BLOCK ELEMENT WISE PRUNING L1RankedStructureParameterPruner - param: %s pruned=%.3f fraction_to_prune:%f", param_name, distiller.sparsity(zeros_mask_dict[param_name].mask), fraction_to_prune)
+
+
+
+
 
         # TODO: Now prune per batch in each epoch and fine tune 
         # For now just the first batch is pruned 
@@ -142,20 +165,6 @@ class L1RankedStructureParameterPruner(RankedStructureParameterPruner):
         
         
         
-        # -- old code 
-        filter_mags = view_filters.data.abs().mean(dim=1)
-        topk_filters = int(fraction_to_prune * filter_mags.size(0))
-        if topk_filters == 0:
-            msglogger.info("Too few filters - can't prune %.1f%% filters", 100*fraction_to_prune)
-            return
-        bottomk, _ = torch.topk(filter_mags, topk_filters, largest=False, sorted=True)
-        threshold = bottomk[-1]
-        # Then we threshold
-        zeros_mask_dict[param_name].mask = distiller.group_threshold_mask(param, 'Filters', threshold, 'Mean_Abs')
-        msglogger.info("L1RankedStructureParameterPruner - param: %s pruned=%.3f goal=%.3f (%d/%d)", param_name,
-                       distiller.sparsity(zeros_mask_dict[param_name].mask),
-                       fraction_to_prune, topk_filters, filter_mags.size(0))
-
 
 
 
