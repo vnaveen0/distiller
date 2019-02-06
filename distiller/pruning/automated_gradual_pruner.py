@@ -72,7 +72,7 @@ class CriterionParameterizedAGP(AutomatedGradualPruner):
     def __init__(self, name, initial_sparsity, final_sparsity, reg_regims):
         self.reg_regims = reg_regims
         weights = [weight for weight in reg_regims.keys()]
-        if not all([group in ['3D', 'Filters', 'Channels', 'Rows'] for group in reg_regims.values()]):
+        if not all([group in ['3D', 'Filters', 'Channels', 'Rows', 'Blocks'] for group in reg_regims.values()]):
             raise ValueError("Unsupported group structure")
         super(CriterionParameterizedAGP, self).__init__(name, initial_sparsity,
                                                         final_sparsity, weights,
@@ -86,6 +86,9 @@ class CriterionParameterizedAGP(AutomatedGradualPruner):
         elif self.reg_regims[param_name] == 'Rows':
             self.rows_ranking_fn(target_sparsity, param, param_name, zeros_mask_dict, model)
 
+        elif self.reg_regims[param_name] == 'Blocks':
+            self.blocks_ranking_fn(target_sparsity, param, param_name, zeros_mask_dict, model)
+
 
 # TODO: this class parameterization is cumbersome: the ranking functions (per structure)
 # should come from the YAML schedule
@@ -96,6 +99,7 @@ class L1RankedStructureParameterPruner_AGP(CriterionParameterizedAGP):
         self.filters_ranking_fn = L1RankedStructureParameterPruner.rank_prune_filters
         self.channels_ranking_fn = L1RankedStructureParameterPruner.rank_prune_channels
         self.rows_ranking_fn = L1RankedStructureParameterPruner.rank_prune_rows
+        self.blocks_ranking_fn = L1RankedStructureParameterPruner.dataflow_rank_prune_filters
 
 
 class ActivationAPoZRankedFilterPruner_AGP(CriterionParameterizedAGP):

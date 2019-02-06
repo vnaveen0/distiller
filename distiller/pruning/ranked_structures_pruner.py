@@ -117,6 +117,48 @@ class L1RankedStructureParameterPruner(RankedStructureParameterPruner):
                        distiller.sparsity(zeros_mask_dict[param_name].mask),
                        fraction_to_prune, topk_filters, filter_mags.size(0))
 
+
+    @staticmethod
+    def dataflow_rank_prune_filters(weight_buffer_size, param, param_name, zeros_mask_dict, model=None):
+        import pdb; pdb.set_trace()
+        assert param.dim() == 4, "This thresholding is only supported for 4D weights"
+        # First we rank the filters
+        view_filters = param.view(param.size(0), -1)
+        # TODO: Say Weight buffer size is 2Kb. So Based on descending order of size
+        # Find cutoff and decide filters to prune 
+        KScnn = 4
+        mem_limit = 512
+        size_of_each_filter = view_filters.size(1)
+        batch_size = KScnn* size_of_each_filter
+
+        # Note: fraction to prune is per batch
+        if batch_size > mem_limit:
+          fraction_to_prune = mem_limit/batch_size
+
+        # TODO: Now prune per batch in each epoch and fine tune 
+        # For now just the first batch is pruned 
+        
+        # NEED TO WRITE CUSTOM MASK FUNCTION ALSO 
+        
+        
+        
+        # -- old code 
+        filter_mags = view_filters.data.abs().mean(dim=1)
+        topk_filters = int(fraction_to_prune * filter_mags.size(0))
+        if topk_filters == 0:
+            msglogger.info("Too few filters - can't prune %.1f%% filters", 100*fraction_to_prune)
+            return
+        bottomk, _ = torch.topk(filter_mags, topk_filters, largest=False, sorted=True)
+        threshold = bottomk[-1]
+        # Then we threshold
+        zeros_mask_dict[param_name].mask = distiller.group_threshold_mask(param, 'Filters', threshold, 'Mean_Abs')
+        msglogger.info("L1RankedStructureParameterPruner - param: %s pruned=%.3f goal=%.3f (%d/%d)", param_name,
+                       distiller.sparsity(zeros_mask_dict[param_name].mask),
+                       fraction_to_prune, topk_filters, filter_mags.size(0))
+
+
+
+
     @staticmethod
     def rank_prune_rows(fraction_to_prune, param, param_name, zeros_mask_dict, model=None):
         """Prune the rows of a matrix, based on ranked L1-norms of the matrix rows.
